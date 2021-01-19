@@ -1,0 +1,113 @@
+---
+title: "Economic Freedom Project"
+author: "Tyler Harris"
+date: "1/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Set working directory
+# setwd("your/directory/here")
+```
+
+```{r}
+# Install if needed by removing the #
+# install.packages("tidyverse")
+# install.packages("readxl")
+# install.packages("FactoMineR")
+# install.packages("factoextra")
+
+# Load Libraries
+library(tidyverse)
+library(readxl)
+library(FactoMineR)
+library(factoextra)
+```
+
+```{r}
+# Import Data
+EFI_data <- read_excel("index2020_data.xls")
+```
+
+```{r}
+# Get original column names
+EFI_data_col_names <- names(EFI_data)
+```
+
+```{r}
+# Fix "N/A" in the data set
+EFI_data <- data.frame(lapply(EFI_data, function(x) {
+  gsub("N/A", "", x)
+}))
+```
+
+```{r}
+# Put the right column names back
+names(EFI_data) <- EFI_data_col_names
+```
+
+```{r}
+# Create custom function to fix data types and round
+to_numeric_and_round_func <- function(x){
+  round(as.numeric(as.character(x)),2)
+}
+```
+
+```{r}
+# Mutate the columns to proper data type
+EFI_data <- EFI_data %>%
+  mutate_at(vars(-one_of("Country Name", "WEBNAME", "Region", "Country")), to_numeric_and_round_func)
+```
+
+```{r}
+# Remove Country and WEBNAME
+EFI_data$Country <- NULL
+EFI_data$WEBNAME <- NULL
+```
+
+```{r}
+# create clean data with no NA
+clean_data <- EFI_data %>%
+  drop_na()
+```
+
+```{r}
+# Set seed
+set.seed(1234)
+```
+
+```{r}
+# Cluster Analysis - kmeans
+kmeans_basic <- kmeans(clean_data[,7:32], centers = 5)
+kmeans_basic_table <- data.frame(kmeans_basic$size, kmeans_basic$centers)
+kmeans_basic_df <- data.frame(Cluster = kmeans_basic$cluster, clean_data)
+
+# head of df
+head(kmeans_basic_df)
+```
+
+```{r}
+# Example ggplot
+ggplot(data = kmeans_basic_df, aes(y = Cluster)) +
+  geom_bar(aes(fill = Region)) +
+  ggtitle("Count of Clusters by Region") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+# Fancy K-Means
+fviz_nbclust(scale(clean_data[,7:32]), kmeans, nstart=100, method = "wss") + 
+  geom_vline(xintercept = 5, linetype = 1)
+```
+
+```{r}
+# Fancy kmeans
+kmeans_fancy <- kmeans(scale(clean_data[,7:32]), 5, nstart = 100)
+
+# plot the clusters
+fviz_cluster(kmeans_fancy, data = scale(clean_data[,7:32]), geom = c("point"),ellipse.type = "euclid")
+```
